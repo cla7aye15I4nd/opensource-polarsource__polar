@@ -98,6 +98,7 @@ class TestWriteUpdates:
                 "external_customer_id": "customer",
                 "sealed_until": 300,
                 "sealed": {"reducer": 1},
+                "credited": {},
                 "buckets": [],
             }
         )
