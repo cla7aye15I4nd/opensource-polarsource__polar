@@ -4,6 +4,7 @@ from decimal import Decimal
 
 import pytest
 import pytest_asyncio
+from pytest_mock import MockerFixture
 
 from polar.customer_meter.service import customer_meter as customer_meter_service
 from polar.event.repository import EventRepository
@@ -227,10 +228,14 @@ class TestUpdateCustomerMeter:
     async def test_new_customer_meter(
         self,
         session: AsyncSession,
+        mocker: MockerFixture,
         customer: Customer,
         events: list[Event],
         meter: Meter,
     ) -> None:
+        compare = mocker.patch(
+            "polar.customer_meter.service.reducer_service.compare_quantity"
+        )
         before = utc_now()
         customer_meter, updated = await customer_meter_service.update_customer_meter(
             session, customer, meter
@@ -248,6 +253,17 @@ class TestUpdateCustomerMeter:
         assert customer_meter.last_balanced_event == events[-3]
 
         assert updated is True
+
+        compare.assert_awaited_once_with(
+            session,
+            meter_id=meter.id,
+            customer_id=customer.id,
+            start=events[1].timestamp,
+            end=mocker.ANY,
+            expected=20,
+            consumer="customer_meter",
+        )
+        assert before <= compare.call_args.kwargs["end"] <= after
 
     async def test_historical_usage_ingested_after_reset_timestamp_is_included(
         self,
