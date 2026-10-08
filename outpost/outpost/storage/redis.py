@@ -49,7 +49,7 @@ return 0
 
 APPLY_SNAPSHOT_SCRIPT = """
 local snapshot_key, buckets_key = KEYS[1], KEYS[2]
-local sealed_until, ttl, sealed_count = tonumber(ARGV[1]), ARGV[2], tonumber(ARGV[3])
+local sealed_until, ttl, field_count = tonumber(ARGV[1]), ARGV[2], tonumber(ARGV[3])
 local current = tonumber(redis.call('HGET', snapshot_key, 'sealed_until'))
 if current and current > sealed_until then
     return 0
@@ -57,7 +57,7 @@ end
 redis.call('DEL', snapshot_key)
 redis.call('HSET', snapshot_key, 'sealed_until', sealed_until)
 local i = 4
-for _ = 1, sealed_count do
+for _ = 1, field_count do
     redis.call('HSET', snapshot_key, ARGV[i], ARGV[i + 1])
     i = i + 2
 end
@@ -125,10 +125,12 @@ class RedisStorage:
         args: list[str | int | float] = [
             snapshot["sealed_until"],
             BUCKET_TTL,
-            len(snapshot["sealed"]),
+            len(snapshot["sealed"]) + len(snapshot["credited"]),
         ]
         for reducer_id, value in snapshot["sealed"].items():
-            args.extend((reducer_id, value))
+            args.extend((f"sealed:{reducer_id}", value))
+        for meter_id, value in snapshot["credited"].items():
+            args.extend((f"credited:{meter_id}", value))
         for bucket in snapshot["buckets"]:
             args.extend(
                 (f"{bucket['reducer_id']}:{bucket['bucket_start']}", bucket["value"])
@@ -147,12 +149,18 @@ class RedisStorage:
         for field, value in stored_buckets.items():
             reducer_id, bucket_start = field.decode().rsplit(":", 1)
             buckets[(reducer_id, int(bucket_start))] = float(value)
-        sealed_until = snapshot.pop(b"sealed_until", None)
-        return {
-            "sealed_until": int(sealed_until) if sealed_until is not None else None,
-            "sealed": {
-                reducer_id.decode(): float(value)
-                for reducer_id, value in snapshot.items()
-            },
+        state: CustomerState = {
+            "sealed_until": None,
+            "sealed": {},
+            "credited": {},
             "buckets": buckets,
         }
+        for field, value in snapshot.items():
+            match field.decode().split(":", 1):
+                case ["sealed_until"]:
+                    state["sealed_until"] = int(value)
+                case ["sealed", reducer_id]:
+                    state["sealed"][reducer_id] = float(value)
+                case ["credited", meter_id]:
+                    state["credited"][meter_id] = float(value)
+        return state

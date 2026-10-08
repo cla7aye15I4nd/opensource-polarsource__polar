@@ -81,6 +81,7 @@ class MemoryStorage:
         return {
             "sealed_until": snapshot["sealed_until"] if snapshot else None,
             "sealed": snapshot["sealed"] if snapshot else {},
+            "credited": snapshot["credited"] if snapshot else {},
             "buckets": {
                 (reducer_id, bucket_start): value
                 for (customer, reducer_id, bucket_start), value in self.buckets.items()

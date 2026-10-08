@@ -41,6 +41,7 @@ def polar_snapshot(external_customer_id: str) -> dict[str, typing.Any]:
         "external_customer_id": external_customer_id,
         "sealed_until": 300,
         "sealed": {POLAR_REDUCERS[0]["id"]: 10},
+        "credited": {POLAR_METERS[0]["id"]: 100},
         "buckets": [],
     }
 

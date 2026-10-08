@@ -105,5 +105,6 @@ async def test_listen_applies_snapshots() -> None:
     assert await storage.read("customer") == {
         "sealed_until": 300,
         "sealed": polar_snapshot("customer")["sealed"],
+        "credited": polar_snapshot("customer")["credited"],
         "buckets": {},
     }
