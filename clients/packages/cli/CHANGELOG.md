@@ -1,5 +1,11 @@
 # @polar-sh/cli
 
+## 2.0.3
+
+### Patch Changes
+
+- cc6f9f5: Mark `polar webhooks reset_webhook_endpoint_secret` as destructive so it requires user confirmation.
+
 ## 2.0.2
 
 ### Patch Changes
